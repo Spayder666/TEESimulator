@@ -64,13 +64,13 @@ jobs:
         run: |
           # ANDROID_HOME is a runner-level env var, invisible to the workflow `env:` context —
           # exporting here keeps cargo-ndk on the pinned NDK instead of the runner's latest.
-          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
+          export NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
           rustup component add clippy
           ./rust/build.sh clippy
 
       - name: Build the module
         run: |
-          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
+          export NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
           ./gradlew zipRelease zipDebug
 
       # upload-artifact re-zips whatever it is given on download, so handing it the built module zip
