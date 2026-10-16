@@ -23,6 +23,10 @@ object ConfigStore {
     data class ProfileConfig(
         val id: String,
         val keybox: String, // relative to Const.DATA_DIR
+        // Optional second keybox (relative to Const.DATA_DIR) served at the StrongBox level, so the
+        // two security levels present distinct chain[1] signers the way separately-provisioned
+        // hardware does. Empty falls back to [keybox] for StrongBox too.
+        val keyboxStrongBox: String,
         val mode: String, // "patch" | "generation"
         val patchSystem: String,
         val patchVendor: String,
@@ -88,6 +92,21 @@ object ConfigStore {
             val keyboxFile = File(Const.DATA_DIR, keybox)
             if (!keyboxFile.isFile)
                 throw ConfigException("profile '$id' keybox not found: ${keyboxFile.absolutePath}")
+
+            val keyboxStrongBox = p.optString("keyboxStrongBox", "").trim()
+            if (keyboxStrongBox.isNotEmpty()) {
+                if (keyboxStrongBox.contains('/') || keyboxStrongBox.contains('\\') ||
+                    keyboxStrongBox.startsWith(".")
+                )
+                    throw ConfigException(
+                        "profile '$id' keyboxStrongBox must be a plain file name in the data dir"
+                    )
+                val sbFile = File(Const.DATA_DIR, keyboxStrongBox)
+                if (!sbFile.isFile)
+                    throw ConfigException(
+                        "profile '$id' keyboxStrongBox not found: ${sbFile.absolutePath}"
+                    )
+            }
 
             // Operation mode: patch (re-sign the real hardware attestation) or generation (mint the
             // whole key). Defaults to patch; a level whose hardware is unavailable still falls back
@@ -168,6 +187,7 @@ object ConfigStore {
                 ProfileConfig(
                     id = id,
                     keybox = keybox,
+                    keyboxStrongBox = keyboxStrongBox,
                     mode = mode,
                     // Defaults for an omitted field mirror the shipped config: a current-month
                     // system patch and the conventional YYYY-MM-05 vendor/boot patch; an absent

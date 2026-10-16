@@ -47,6 +47,12 @@ typedef struct {
   const char *id;
   const uint8_t *keybox;
   size_t keybox_len;
+  // Optional second keybox for the StrongBox-level TA. Real hardware provisions the SE with its own
+  // batch certificate chain, so the two levels present distinct signers; serving both from one
+  // keybox makes chain[1] byte-identical across levels, which "StrongBox vs TEE signer" probes
+  // (VD Infos attest:sb_tee_signer) flag as a shared-spoof tell. NULL/0 falls back to `keybox`.
+  const uint8_t *keybox_strongbox;
+  size_t keybox_strongbox_len;
   const char *mode;  // "patch" | "generation"; NULL defaults to generation
   int32_t security_level;  // 0 Software, 1 TEE, 2 StrongBox
   uint32_t os_version;

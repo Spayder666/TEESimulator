@@ -147,6 +147,7 @@ struct ProfileStorage {
   std::string id;
   std::string mode;
   std::vector<uint8_t> keybox;
+  std::vector<uint8_t> keybox_strongbox;
   std::vector<std::string> pkg_strings;
   std::vector<const char *> pkg_ptrs;
   std::vector<int32_t> pkg_users;
@@ -237,6 +238,12 @@ void ApplyConfig(const tjson::Value &msg, uint64_t &epoch, int &applied, int &to
           continue;
         }
       }
+      if (const tjson::Value *kbsb = pj.get("keyboxStrongBoxB64")) {
+        if (!Base64Decode(kbsb->as_string(), s.keybox_strongbox)) {
+          LOGE("ApplyConfig: profile %s has an undecodable strongbox keybox", s.id.c_str());
+          continue;
+        }
+      }
       if (const tjson::Value *pkgs = pj.get("packages")) {
         for (size_t j = 0; j < pkgs->size(); ++j) s.pkg_strings.push_back(pkgs->at(j).as_string());
       }
@@ -268,6 +275,8 @@ void ApplyConfig(const tjson::Value &msg, uint64_t &epoch, int &applied, int &to
       tp.id = s.id.c_str();
       tp.keybox = s.keybox.data();
       tp.keybox_len = s.keybox.size();
+      tp.keybox_strongbox = s.keybox_strongbox.data();
+      tp.keybox_strongbox_len = s.keybox_strongbox.size();
       tp.mode = s.mode.empty() ? nullptr : s.mode.c_str();
       tp.security_level = pj.get("securityLevel") ? int32_t(pj.get("securityLevel")->as_int(1)) : 1;
       tp.os_version = pj.get("osVersion") ? uint32_t(pj.get("osVersion")->as_int(0)) : 0;

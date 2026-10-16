@@ -1582,12 +1582,23 @@ extern "C" void teesim_cfg_begin(const TsBootInfo* boot) {
 
 extern "C" bool teesim_cfg_add_profile(const TsProfile* p) {
   // A real device runs a separate KeyMint instance per security level; we mirror that with one fixed-
-  // level TA per level. Both are built from the same keybox and boot state, so their key-encryption
-  // keys match and any of our blobs decrypts under either — but each stamps its own level into the
-  // keys it mints, so operations read a key's characteristics at the level it was minted at with no
-  // per-request override. `p->security_level` is retained only for the staged-profile log line.
+  // level TA per level. Both share the boot state, but the StrongBox TA can take its own keybox
+  // (keybox_strongbox): real hardware provisions the SE with a different batch certificate, so the
+  // two levels legitimately present distinct chain[1] signers, and probes compare exactly that.
+  // Each TA still stamps its own level into the keys it mints, so operations read a key's
+  // characteristics at the level it was minted at with no per-request override. Note a strongbox-
+  // keybox blob decrypts only in its own TA — keystore2 routes by the key's stored level, which is
+  // what real hardware requires anyway. `p->security_level` is retained only for the staged-profile
+  // log line.
   auto buildTa = [&](int32_t level) -> ::Ta* {
-    return teesim_km_init_ex(p->keybox, p->keybox_len, level, p->os_version, p->os_patchlevel,
+    const uint8_t* kb = p->keybox;
+    size_t kb_len = p->keybox_len;
+    if (level == static_cast<int32_t>(SecurityLevel::STRONGBOX) && p->keybox_strongbox &&
+        p->keybox_strongbox_len > 0) {
+      kb = p->keybox_strongbox;
+      kb_len = p->keybox_strongbox_len;
+    }
+    return teesim_km_init_ex(kb, kb_len, level, p->os_version, p->os_patchlevel,
                              p->vendor_patchlevel, p->boot_patchlevel, g_stage_vb_key.data(),
                              g_stage_vb_key.size(), g_stage_vb_hash.data(), g_stage_vb_hash.size(),
                              g_stage_locked, g_stage_vb_state, g_stage_attest_version_tee,

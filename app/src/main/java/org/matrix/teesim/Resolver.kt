@@ -114,6 +114,13 @@ object Resolver {
         val keyboxBytes = File(Const.DATA_DIR, p.keybox).readBytes()
         o.put("keyboxB64", b64.encodeToString(keyboxBytes))
 
+        // Optional second keybox for the StrongBox-level TA (distinct chain[1] signer per level,
+        // the way separately-provisioned hardware presents different batch certificates).
+        if (p.keyboxStrongBox.isNotBlank()) {
+            val sbBytes = File(Const.DATA_DIR, p.keyboxStrongBox).readBytes()
+            o.put("keyboxStrongBoxB64", b64.encodeToString(sbBytes))
+        }
+
         // Operation mode: "patch" re-signs the real hardware attestation, "generation" mints the
         // whole key in our TA. The router still forces generation for a level whose hardware is
         // unavailable.
