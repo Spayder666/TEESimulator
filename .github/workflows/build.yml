@@ -61,16 +61,17 @@ jobs:
       # KeyParameter conversion denies lossy integer casts (see #205), so a new
       # unguarded cast fails here rather than silently mis-encoding a tag.
       - name: Lint the KeyMint TA (clippy)
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
         run: |
+          # ANDROID_HOME is a runner-level env var, invisible to the workflow `env:` context —
+          # exporting here keeps cargo-ndk on the pinned NDK instead of the runner's latest.
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
           rustup component add clippy
           ./rust/build.sh clippy
 
       - name: Build the module
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
-        run: ./gradlew zipRelease zipDebug
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
+          ./gradlew zipRelease zipDebug
 
       # upload-artifact re-zips whatever it is given on download, so handing it the built module zip
       # yields a zip-of-a-zip that has to be unpacked twice before flashing. Unpack each variant and
