@@ -49,9 +49,24 @@ object Resolver {
                 // update changes the module set; the persisted capture/override is only a fallback
                 // when that live source is unavailable. Emitted only for KeyMint v4+ attestations
                 // (the TA gates on version), so an older profile never carries it.
+                // Gate on keystore2 actually answering getSupplementaryAttestationInfo: the apex
+                // watcher on a teesim-restarted keystore2 never sees "activated" (apexd is long
+                // gone by the time we restart it), so ENCODED_MODULE_INFO stays empty there and
+                // ANY attested hash — even a byte-perfect reconstruction — is the
+                // UNEXPECTED_ATTESTATION_MODULE_HASH tell (VD Infos "local probes need review").
+                // When keystore2 does answer, resolveModuleHash returns the exact digest it stores
+                // and the tag stays aligned; when it doesn't, the tag is omitted entirely so the
+                // absence is consistent on both sides.
                 val moduleHash =
-                    Harvester.resolveModuleHash().takeIf { hash -> hash.any { it.toInt() != 0 } }
-                        ?: harvest.effectiveModuleHash()
+                    if (
+                        Keystore2Service.getSupplementaryAttestationInfo(
+                            Harvester.KM_TAG_MODULE_HASH
+                        ) != null
+                    ) {
+                        Harvester.resolveModuleHash()
+                            .takeIf { hash -> hash.any { it.toInt() != 0 } }
+                            ?: harvest.effectiveModuleHash()
+                    } else null
                 moduleHash?.let { put("moduleHash", b64.encodeToString(it)) }
                 // Always present a locked, Verified boot state. Module users run unlocked
                 // bootloaders, and reporting the device's real state (unlocked / Unverified) fails

@@ -1002,7 +1002,14 @@ object Harvester {
         // resolveModuleHash). The RAW capture stays null; this deduced value is a synthesized
         // override. Resolver re-derives it live at each commit, so this persisted snapshot is only
         // a seed.
-        if (capturedModuleHash == null) fab["moduleHash"] = resolveModuleHash().toHex()
+        // Same gate as Resolver: only synthesize MODULE_HASH when keystore2 can serve the blob
+        // back. An attested tag with no local answer is the divergence the probe flags.
+        if (
+            capturedModuleHash == null &&
+            Keystore2Service.getSupplementaryAttestationInfo(KM_TAG_MODULE_HASH) != null
+        ) {
+            fab["moduleHash"] = resolveModuleHash().toHex()
+        }
 
         // Device-identity ids parsed per tag. An empty value means the tag was ABSENT from the leaf
         // — device-properties attestation omits imei/meid/serial — not a parse failure.
