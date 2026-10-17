@@ -117,8 +117,16 @@ object Resolver {
         // Optional second keybox for the StrongBox-level TA (distinct chain[1] signer per level,
         // the way separately-provisioned hardware presents different batch certificates).
         if (p.keyboxStrongBox.isNotBlank()) {
-            val sbBytes = File(Const.DATA_DIR, p.keyboxStrongBox).readBytes()
-            o.put("keyboxStrongBoxB64", b64.encodeToString(sbBytes))
+            // The file passed validation at load time; if it vanished since, ship the config
+            // WITHOUT the strongbox keybox (lib falls back to the profile keybox) rather than
+            // failing the whole push and leaving a possibly-revoked staged set serving.
+            runCatching { File(Const.DATA_DIR, p.keyboxStrongBox).readBytes() }
+                .onSuccess { o.put("keyboxStrongBoxB64", b64.encodeToString(it)) }
+                .onFailure {
+                    SystemLogger.error(
+                        "Resolver: keyboxStrongBox '${p.keyboxStrongBox}' unreadable: ${it.message}"
+                    )
+                }
         }
 
         // Operation mode: "patch" re-signs the real hardware attestation, "generation" mints the

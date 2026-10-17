@@ -102,10 +102,17 @@ object ConfigStore {
                         "profile '$id' keyboxStrongBox must be a plain file name in the data dir"
                     )
                 val sbFile = File(Const.DATA_DIR, keyboxStrongBox)
-                if (!sbFile.isFile)
-                    throw ConfigException(
-                        "profile '$id' keyboxStrongBox not found: ${sbFile.absolutePath}"
+                if (!sbFile.isFile) {
+                    // A missing StrongBox keybox must not invalidate the whole config: throwing here
+                    // makes App keep the last-good staged set, which may be a REVOKED keybox (the
+                    // 2026-10-17 STRONG outage). Degrade instead: fall back to the profile keybox
+                    // for StrongBox too (SB shares the TEE signer, equality probes go red, but the
+                    // chains stay valid) and log loudly so the missing file is noticed.
+                    SystemLogger.error(
+                        "ConfigStore: profile '$id' keyboxStrongBox file missing " +
+                            "(${sbFile.absolutePath}); falling back to keybox for StrongBox"
                     )
+                }
             }
 
             // Operation mode: patch (re-sign the real hardware attestation) or generation (mint the
@@ -187,7 +194,9 @@ object ConfigStore {
                 ProfileConfig(
                     id = id,
                     keybox = keybox,
-                    keyboxStrongBox = keyboxStrongBox,
+                    keyboxStrongBox = if (keyboxStrongBox.isNotEmpty() &&
+                        File(Const.DATA_DIR, keyboxStrongBox).isFile
+                    ) keyboxStrongBox else "",
                     mode = mode,
                     // Defaults for an omitted field mirror the shipped config: a current-month
                     // system patch and the conventional YYYY-MM-05 vendor/boot patch; an absent
