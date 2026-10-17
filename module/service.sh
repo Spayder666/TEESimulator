@@ -21,6 +21,16 @@ for f in "$MODDIR"/*/teesim-uds; do
   fi
 done
 
+# keystore2 pushes MODULE_HASH to KeyMint (setAdditionalAttestationInfo) once per boot and latches
+# keystore.module_hash.sent; the latch survives keystore2 restarts, but the in-process ENCODED_MODULE
+# _INFO does not. This module restarts keystore2 to inject, so the restarted instance would skip the
+# whole path and getSupplementaryAttestationInfo(MODULE_HASH) would stay empty while attestations
+# carry the tag (VD Infos: "MODULE HASH present while supplementary attestation info was
+# unavailable"). Clear the latch so the injected keystore2 re-runs it — it re-derives the same apex
+# DER blob the daemon reconstructs, stores it, and pushes a hash identical to the seed the router
+# already applied, which the reference TA accepts idempotently.
+resetprop --delete keystore.module_hash.sent 2>/dev/null || true
+
 while true; do
   "$MODDIR/daemon" "$MODDIR"
   sleep 2
