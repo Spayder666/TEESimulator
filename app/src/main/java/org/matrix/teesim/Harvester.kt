@@ -68,7 +68,7 @@ object Harvester {
     // The full KeyMint Tag value for MODULE_HASH (TagType.BYTES | 724 = 0x900002D4) — what
     // IKeystoreService.getSupplementaryAttestationInfo expects, distinct from the cert extension's
     // raw tag number 724 above. Same constant KeyStoreManager.MODULE_HASH resolves to.
-    private const val KM_TAG_MODULE_HASH = -1879047468
+    internal const val KM_TAG_MODULE_HASH = -1879047468
 
     // Attestation-ID tags (device properties). Captured so we can provision them back, letting an
     // app's device-ID attestation request succeed against the real values.
